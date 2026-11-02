@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cronograma do culto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f6;--surface:#fff;--ink:#1b2340;--muted:#7a839b;--line:#d9deea;--accent:#2f5bff;--on-accent:#fff;--done:#a3abc0;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10142a;--surface:#1a2040;--ink:#eef1fb;--muted:#9aa3c0;--line:#2b3360;--accent:#6f8cff;--on-accent:#0c1030;--done:#59628a}}
+:root[data-theme="dark"]{--bg:#10142a;--surface:#1a2040;--ink:#eef1fb;--muted:#9aa3c0;--line:#2b3360;--accent:#6f8cff;--on-accent:#0c1030;--done:#59628a}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif;line-height:1.4}
+main{max-width:560px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:15px;font-weight:600;color:var(--muted);margin:0 0 12px}
+.now{background:var(--accent);color:var(--on-accent);border-radius:22px;padding:22px 20px 18px}
+.now small{display:block;font-size:14px;opacity:.85}
+.now .cur{font-size:clamp(28px,8vw,40px);font-weight:800;line-height:1.1;margin:6px 0 16px;letter-spacing:-.02em}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.count{font-size:34px;font-weight:600;font-variant-numeric:tabular-nums}
+.bar{height:6px;border-radius:3px;background:rgba(255,255,255,.3);margin-top:12px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--on-accent);width:0;transition:width .6s}
+h2{font-size:15px;font-weight:600;color:var(--muted);margin:28px 0 8px}
+ul{list-style:none;margin:0;padding:0}
+.item{display:flex;gap:14px;align-items:center;padding:13px 4px;border-bottom:1px solid var(--line)}
+.item time{width:48px;font-variant-numeric:tabular-nums;font-weight:600;color:var(--muted)}
+.item span{flex:1}
+.item.past{color:var(--done)}
+.item.past span{text-decoration:line-through}
+.item.past time{color:var(--done)}
+.item.on{background:var(--surface);border:2px solid var(--accent);border-radius:14px;padding:13px 12px;margin:6px -8px;font-weight:600}
+.item.on time{color:var(--accent)}
+.tag{font-size:12px;font-weight:600;background:var(--accent);color:var(--on-accent);border-radius:99px;padding:2px 9px}
+label.item{cursor:pointer}
+label.item input{width:22px;height:22px;accent-color:var(--accent);margin:0}
+label.item input:checked+span{color:var(--done);text-decoration:line-through}
+details{margin-top:32px;color:var(--muted);font-size:14px}
+summary{cursor:pointer}
+details div{margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input[type=time]{font:inherit;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.big{font-size:clamp(48px,15vw,68px);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1;margin:8px 0 14px}
+#next{font-size:15px;opacity:.9;min-height:1.4em}
+.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.go{border:0;border-radius:12px;padding:12px 20px;font-weight:600;background:var(--on-accent);color:var(--accent)}
+.go.ghost{background:transparent;color:var(--on-accent);border:1px solid var(--on-accent)}
+.go[hidden]{display:none}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+<h1>Cronograma do culto</h1>
+<section class="now" aria-live="polite">
+  <small id="status"></small>
+  <div class="big" id="count"></div>
+  <div class="cur" id="cur"></div>
+  <div id="next"></div>
+  <div class="bar"><i id="prog"></i></div>
+  <div class="acts">
+    <button class="go" id="go">Iniciar</button>
+    <button class="go ghost" id="clk">Seguir pelo relógio</button>
+    <button class="go ghost" id="rs" hidden>Reiniciar</button>
+  </div>
+</section>
+<div id="list"></div>
+<h2>Avisos</h2>
+<ul id="avisos"></ul>
+<details>
+  <summary>Iniciar a partir de outro horário</summary>
+  <div>
+    <input type="time" id="sim" value="19:00" aria-label="Horário de partida">
+    <button id="simGo">Iniciar neste horário</button>
+  </div>
+</details>
+</main>
+<script>
+const items=[
+ {t:"17:00",g:"Pré-culto",n:"Louvor / Diaconia / Infra"},
+ {t:"18:00",g:"Pré-culto",n:"Todos os voluntários"},
+ {t:"18:15",g:"Pré-culto",n:"Briefing"},
+ {t:"19:00",g:"Culto",n:"Abertura / oração"},
+ {t:"19:05",g:"Culto",n:"Louvor (15 min)"},
+ {t:"19:20",g:"Culto",n:"Vídeo / Avisos / Oferta"},
+ {t:"19:40",g:"Culto",n:"Pregação"},
+ {t:"20:10",g:"Culto",n:"Ministração / oração final"},
+ {t:"20:30",g:"Culto",n:"Encerramento"}
+];
+const avisos=["Próximo culto: fevereiro (a confirmar)","Legacy Camp","Nova dinâmica para o próximo ano","Novos GCs"];
+const END="20:45";
+const m=s=>{const[a,b]=s.split(":");return +a*60+ +b};
+const starts=items.map(i=>m(i.t)*60), endSec=m(END)*60;
+const $=id=>document.getElementById(id);
+let st=null;try{st=JSON.parse(localStorage.getItem("run")||"null")}catch(e){}
+const pad=n=>String(n).padStart(2,"0");
+const fmt=s=>{s=Math.max(0,Math.floor(s));const h=Math.floor(s/3600),mm=Math.floor(s%3600/60),ss=s%60;return(h?h+":":"")+pad(mm)+":"+pad(ss)};
+const real=()=>{const d=new Date();return d.getHours()*3600+d.getMinutes()*60+d.getSeconds()};
+const now=()=>{if(!st)return null;if(st.mode==="clock")return real();return st.v+(Date.now()-st.r)/1000};
+const save=()=>{try{localStorage.setItem("run",JSON.stringify(st))}catch(e){}};
+
+function buildList(){
+  let html="",g="";
+  items.forEach((it,i)=>{
+    if(it.g!==g){g=it.g;html+=(i?"</ul>":"")+"<h2>"+g+"</h2><ul>"}
+    html+='<li class="item" id="i'+i+'"><time>'+it.t+"</time><span>"+it.n+"</span></li>";
+  });
+  $("list").innerHTML=html+"</ul>";
+}
+function buildAvisos(){
+  $("avisos").innerHTML=avisos.map((a,i)=>'<li><label class="item"><input type="checkbox" data-i="'+i+'"><span>'+a+"</span></label></li>").join("");
+  document.querySelectorAll("#avisos input").forEach(c=>{
+    try{c.checked=localStorage.getItem("aviso"+c.dataset.i)==="1"}catch(e){}
+    c.addEventListener("change",()=>{try{localStorage.setItem("aviso"+c.dataset.i,c.checked?"1":"0")}catch(e){}});
+  });
+}
+function tick(){
+  const n=now(),idle=n===null;
+  let idx=-1;
+  if(!idle)starts.forEach((s,i)=>{if(n>=s)idx=i});
+  const finished=!idle&&n>=endSec;
+  $("go").hidden=!idle;$("clk").hidden=!idle;$("rs").hidden=idle;
+  items.forEach((_,i)=>{
+    const el=$("i"+i);
+    el.className="item"+(finished||i<idx?" past":"")+(!finished&&i===idx?" on":"");
+    const old=el.querySelector(".tag");if(old)old.remove();
+    if(!finished&&i===idx){const t=document.createElement("em");t.className="tag";t.textContent="agora";t.style.fontStyle="normal";el.appendChild(t)}
+  });
+  const cs=starts[3];
+  if(idle){
+    $("status").textContent="Pronto para iniciar";$("count").textContent=fmt(cs-starts[0]);
+    $("cur").textContent="Pré-culto às "+items[0].t;$("next").textContent="Toque em Iniciar quando o pré-culto começar";$("prog").style.width="0";return;
+  }
+  if(finished){
+    $("status").textContent="Culto encerrado";$("count").textContent=fmt(endSec-cs);
+    $("cur").textContent="Obrigado por servir!";$("next").textContent="";$("prog").style.width="100%";return;
+  }
+  const nxtStart=idx+1<starts.length?starts[idx+1]:endSec;
+  if(n<cs){$("status").textContent="Contagem regressiva para o culto";$("count").textContent=fmt(cs-n)}
+  else{$("status").textContent="Culto em andamento · cronômetro";$("count").textContent=fmt(n-cs)}
+  if(idx<0){
+    $("cur").textContent="Aguardando "+items[0].t;$("next").textContent="Próximo: "+items[0].n+" em "+fmt(starts[0]-n);$("prog").style.width="0";return;
+  }
+  const dur=nxtStart-starts[idx];
+  $("cur").textContent=items[idx].n;
+  $("next").textContent=idx+1<items.length?"Próximo: "+items[idx+1].n+" em "+fmt(nxtStart-n):"Encerra em "+fmt(nxtStart-n);
+  $("prog").style.width=Math.min(100,(n-starts[idx])/dur*100)+"%";
+}
+$("go").onclick=()=>{st={mode:"run",v:starts[0],r:Date.now()};save();tick()};
+$("clk").onclick=()=>{st={mode:"clock"};save();tick()};
+let armed=0;
+$("rs").onclick=()=>{if(!armed){armed=1;$("rs").textContent="Toque de novo para reiniciar";setTimeout(()=>{armed=0;$("rs").textContent="Reiniciar"},3000);return}armed=0;st=null;save();$("rs").textContent="Reiniciar";tick()};
+$("simGo").onclick=()=>{const v=$("sim").value;if(!v)return;st={mode:"run",v:m(v)*60,r:Date.now()};save();tick()};
+buildList();buildAvisos();tick();setInterval(tick,1000);
+</script>
+</body>
+</html>
